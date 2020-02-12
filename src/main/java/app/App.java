@@ -16,33 +16,32 @@ import java.util.Collections;
 @SpringBootApplication
 public class App {
 
-    @Autowired
-    private ApplicationContext applicationContext;
+  @Autowired
+  private ApplicationContext applicationContext;
 
-    public App() { }
+  public App() {
+  }
 
-    @PostConstruct
-    public void init() {
-         KafkaConfiguration configuration = new KafkaConfiguration(); //applicationContext.getBean(KafkaConfiguration.class);
-         Producer producer = applicationContext.getBean(Producer.class);
+  @PostConstruct
+  public void init() {
+    KafkaConfiguration configuration = applicationContext.getBean(KafkaConfiguration.class);
+    Producer producer = applicationContext.getBean(Producer.class);
 
-         producer.start();
+    producer.start();
 
-         new BitcoinsDataFiles("./")
-                 .loadFiles()
-                 .stream().forEach(e -> {
-                producer.add(e);
-         });
+    new BitcoinsDataFiles("./")
+        .loadFiles()
+        .stream().forEach(producer::add);
 
-        producer.awaitTermination();
+    producer.awaitTermination();
 
-    }
+  }
 
-    public static void main(String[] args) {
-        SpringApplication app = new SpringApplication(App.class);
-        app.setDefaultProperties(Collections
-                .singletonMap("server.port", "8082"));
-        app.run(args);
-    }
+  public static void main(String[] args) {
+    SpringApplication app = new SpringApplication(App.class);
+    app.setDefaultProperties(Collections
+        .singletonMap("server.port", "8082"));
+    app.run(args);
+  }
 
 }
