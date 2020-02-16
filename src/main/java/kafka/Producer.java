@@ -9,6 +9,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -25,6 +26,8 @@ public class Producer {
   private CountDownLatch latch = null;
   private boolean isStart = false;
   BlockingQueue<String> bQueue = new LinkedBlockingDeque<>(10);
+  long last_nanotime=0;
+  long tps_int = 0;
 
   public Producer() {
     template = new KafkaProducer<>(KafkaConfiguration.producerConfigs());
@@ -61,6 +64,10 @@ public class Producer {
     }
   }
 
+  public void setTPS(int tps) {
+    if (tps > 0) tps_int=1000000000L/tps;
+  }
+
   private void processBlock(String fname) {
     try {
       Block block;
@@ -82,15 +89,44 @@ public class Producer {
               if (p.address == null) {
                   continue;
               }
-            send(new Transaction(p.address)
+
+              if (last_nanotime >0) {
+                long delta = System.nanoTime() - last_nanotime;
+                if  (delta<tps_int) sleepNanos(tps_int-delta);
+              }
+
+              send(new Transaction(p.address)
                 .setSum(p.value)
                 .setTimestamp(t.getLockTime()));
+
+              last_nanotime=System.nanoTime();
           }
         }
       }
       log.info("End parsing block:" + fname);
     } catch (IOException e) {
 
+    }
+  }
+
+  public static void sleepNanos(long sleepFor)
+  {
+    boolean wasInterrupted = false;
+    try {
+      long remainTime = TimeUnit.NANOSECONDS.toNanos(sleepFor);
+      long end = System.nanoTime() + remainTime;
+      while (true)
+      {
+        try {
+          NANOSECONDS.sleep(remainTime);
+          return;
+        } catch (InterruptedException e) {
+          wasInterrupted = true;
+          remainTime = end - System.nanoTime();
+        }
+      }
+    } finally {
+      if (wasInterrupted) Thread.currentThread().interrupt();
     }
   }
 
@@ -102,9 +138,7 @@ public class Producer {
             + "," + new Date(transaction.getTimestamp()));
     try {
       RecordMetadata metadata = template.send(record).get();
-    } catch (ExecutionException e) {
-
-    } catch (InterruptedException e) {
+    } catch (ExecutionException | InterruptedException e) {
 
     }
   }
