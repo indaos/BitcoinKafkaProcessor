@@ -19,7 +19,6 @@ public class BitcoinsDataFiles {
     String[] list = new File(path).list(
         (dir, name) -> name.startsWith("blk") && name.endsWith("dat"));
     assert list != null;
-    Arrays.sort(list);
     files = new LinkedList<>(Arrays.asList(list));
     return this;
   }
