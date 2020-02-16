@@ -144,7 +144,7 @@ public class BlockReaderTest {
 
         while (attempt_no < max_attempts) {
           try {
-            ArrayList<Queries.Item> alldays = query.queryAllDays("bitcoin-aggregates-allday");
+            ArrayList<Queries.Item<Long,Long>> alldays = query.queryAllDays("bitcoin-aggregates-allday");
 
             if (alldays == null || alldays.size() == 0) {
               log.info("the database  bitcoin-aggregates-allday is empty yet ... waiting");
